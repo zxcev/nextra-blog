@@ -1026,6 +1026,14 @@ for (Sender sender : senders) {
 
 이 때, 상속을 통해 다양한 `Sender`를 상속하는 클래스를 여럿 만든다.
 
+`EmailSender`, `MessageSender`, `PushNotificationSender`, `VoiceMessageSender`는 모두 `Sender`의 자식 타입이므로,
+
+부모 타입인 `Sender`로 형변환이 가능하다.
+
+그래서 `List<Sender>`에 넷 중 어떤 타입이 오더라도 함께 넣을 수 있다.
+
+(만약 `List<EmailSender>`와 같은 구체 타입의 리스트였다면, `MessageSender`, `PushNotificationSender` 등 다른 타입들이 함께 저장될 수 없었을 것이다.)
+
 그리고 구체적인 로직은 각 클래스의 `send` 메소드에 작성한다.
 
 그럼 어떤 `Sender`가 들어오더라도 `sender.send(dest)`를 호출하는 것 만으로 처리가 완료된다.

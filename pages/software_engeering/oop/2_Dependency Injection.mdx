@@ -1,0 +1,515 @@
+다들 한 번쯤 들어봤을 법한 유명 MMORPG 게임, 메이플스토리에는 모험가라는 직군이 존재한다.
+
+모험가는 각자 자신만의 무기를 가지고 있다.
+
+![](/imgs/oop/di/1.png)
+
+이를 토대로 간단한 클래스를 구현하면서 **DI**에 대해 빠르게 알아보자.
+
+---
+
+# Composition, Dependency
+
+```java filename="Weapon.java" copy
+public final class Weapon {
+    // ...
+}
+```
+
+```java filename="Explorer.java" copy
+public final class Explorer {
+    private final Weapon weapon;
+}
+```
+
+모든 모험가는 무기를 가지고 있다.
+
+고로 `Explorer{:java}`는 `Weapon{:java}`를 멤버 변수로 갖는다.
+
+즉, **has a** 관계이다.
+
+이를 **Composition**이라고 부른다.
+
+또한 `Explorer{:java}`는 `Weapon{:java}`에 **의존**한다고 표현하기도 한다.
+
+`Weapon{:java}`의 상태에 따라 `Explorer{:java}`가 영향을 받기 때문이다.
+
+`Weapon{:java}`이 `null{:java}`이라면 **무기를 들지 않은 모험가**,
+
+`Weapon{:java}`의 상태가 낡음 이라면 **낡은 무기를 든 모험가**가 될 것이다.
+
+이런 연유로 `Weapon{:java}`는 `Explorer{:java}`의 **Dependency**라고 할 수 있다.
+
+둘의 관계는 **Composition**이면서 동시에 **Dependency**인 것이다.
+
+아래와 같이 표현할 수 있다.
+
+`Explorer{:java}` has a `Weapon{:java}`
+
+`Explorer{:java}` depends on a `Weapon{:java}`
+
+---
+
+## DI(Dependency Injection)
+
+```java filename="Explorer.java" copy
+public final class Explorer {
+    private final Weapon weapon;
+
+    public Explorer(Weapon weapon) {
+        this.weapon = weapon;
+    }
+}
+```
+
+이번에는 `Explorer{:java}` 생성자를 만들어서 인자로 `Weapon{:java}`을 받았다.
+
+```java filename="Main.java" copy
+public final class Main {
+    public static void main(String[] args) {
+        Weapon weapon = new Weapon();
+        Explorer explorer = new Explorer(weapon); // 생성할 때 외부에서 생성한 weapon를 전달
+    }
+}
+```
+
+즉, 위와 같이 `Explorer{:java}` 클래스 외부에서 `Weapon{:java}`을 별도로 생성하여
+
+생성자를 호출할 때 넣어줘야 한다.
+
+이를 조금 더 고급스러운 표현을 써서 **Injection**(주입)이라 한다.
+
+그래서 **Dependency Injection**이라고 하는 것이다.
+
+---
+
+# DIP(Dependency Inversion Principle)
+
+맨 처음 봤던 그림에서 모험가는 각자 다른 5종류의 무기를 가지고 있었다.
+
+무기의 종류에 따라 클래스를 나눠보자.
+
+```java filename="Polearm.java" copy
+public final class Polearm extends Weapon { // 전사 무기
+    // ...
+}
+```
+
+```java filename="Wand.java" copy
+public final class Wand extends Weapon { // 마법사 무기
+    // ...
+}
+```
+
+```java filename="Bow.java" copy
+public final class Bow extends Weapon { // 궁수 무기
+    // ...
+}
+```
+
+```java filename="Dagger.java" copy
+public final class Dagger extends Weapon { // 도적 무기
+    // ...
+}
+```
+
+```java filename="Knuckle.java" copy
+public final class Knuckle extends Weapon { // 해적 무기
+    // ...
+}
+```
+
+---
+
+이제 `Weapon{:java}`은 `final{:java}`을 지워 상속을 가능케 하고, 추상 클래스로 만들어주면 될 것이다.
+
+`Weapon{:java}`을 직접 인스턴스화 하는 것이 아니라, 이를 상속 받은 구체 클래스인
+
+폴암, 단검 등의 클래스로 인스턴스를 생성할 것이기 때문이다.
+
+```java filename="Weapon.java" copy
+public abstract class Weapon {
+    // ...
+}
+```
+
+---
+
+만약 생성자에서 `Weapon{:java}`을 상속 받은 구체적인 무기 타입을 인자로 받는다면,
+
+다음과 같이 총 5개의 생성자가 필요할 것이다.
+
+```java filename="Explorer.java" copy
+public final class Explorer {
+    private final Weapon weapon;
+
+    public Explorer(Polearm polearm) {
+        this.weapon = polearm;
+    }
+
+    public Explorer(Wand wand) {
+        this.weapon = wand;
+    }
+
+    public Explorer(Bow bow) {
+        this.weapon = bow;
+    }
+
+    public Explorer(Dagger dagger) {
+        this.weapon = Dagger;
+    }
+
+    public Explorer(Knuckle knuckle) {
+        this.weapon = knuckle;
+    }
+}
+```
+
+---
+
+그러나 `Weapon{:java}` 타입으로 받아온다면 생성자 하나로 5개의 구체 타입이 모두 커버된다.
+
+```java filename="Explorer.java" copy
+public final class Explorer {
+    private final Weapon weapon;
+
+    public Explorer(Weapon weapon) {
+        this.weapon = weapon;
+    }
+}
+```
+
+생각해보면 멤버 변수도 `Weapon{:java}` 타입이기 때문에 구체 타입의 갯수에 따라
+
+멤버 변수를 5개 만들지 않고 1개만으로 커버할 수 있었던 것이다.
+
+이렇듯 **구체 클래스가 아닌 추상 클래스를 의존함으로** 반복적인 코드를 깔끔하게 줄일 수 있다.
+
+그것이 **의존 역전 원칙**(Dependency Inversion Principle)이다.
+
+쉽게 말하면 그냥 필드와 인자로 추상 클래스를 쓰라는 뜻이다.
+
+그러나 만약 무기가 `Wand{:java}` 1개만 있는 게임이었다면, 굳이 이렇게 만들 필요가 없을 것이다.
+
+그런 경우에는 추상 클래스 `Weapon{:java}`, 구체 클래스 `Wand{:java}`를 갖이 오히려 쓸 데 없는 추상 클래스를 늘리게 된다.
+
+구체 클래스 `Wand{:java}` 하나를 갖는 것이 더 간결하다.
+
+이렇듯 상황에 따라 이득인지 손실인지가 달라질 것이다.
+
+그래서 SOLID **원칙**이지, **법칙**이 아니다.(모든 상황에서 진리가 아니라는 뜻)
+
+---
+
+# Open Closed Principle
+
+개방-폐쇄 원칙이라고 불리는데,
+
+확장에는 열려있고 수정에는 닫혀있다고 설명하고 있다.
+
+이름 그대로 설명이 개-폐급이라 이해하기 힘들지만 코드로 보면 간단하다.
+
+생성자에서 추상 클래스 `Weapon{:java}`을 받기 이전 코드로 돌아가보자.
+
+```java filename="Explorer.java" copy
+public final class Explorer {
+    private final Weapon weapon;
+
+    public Explorer(Polearm polearm) {
+        this.weapon = polearm;
+    }
+
+    public Explorer(Wand wand) {
+        this.weapon = wand;
+    }
+
+    public Explorer(Bow bow) {
+        this.weapon = bow;
+    }
+
+    public Explorer(Dagger dagger) {
+        this.weapon = Dagger;
+    }
+
+    public Explorer(Knuckle knuckle) {
+        this.weapon = knuckle;
+    }
+
+    public Explorer(Sword sword) {
+        this.weapon = sword;
+    }
+
+    // 무기가 1000개 라면
+}
+```
+
+게임은 매우 빈번하게 패치가 일어난다.
+
+메이플스토리만 해도 그렇다.
+
+20년 전에는 직업 4개, 무기도 몇 종류 안되었는데
+
+지금 살짝 보니 직업이 46개란다.
+
+무기도 당연히 그 종류가 훨씬 많아졌을 것이다.
+
+이렇게 구체 클래스에 의존하면, 새로운 종류의 무기가 추가될 때마다 생성자를 따로 추가해야 한다.
+
+---
+
+```java filename="Explorer.java" copy
+public final class Explorer {
+    private final Weapon weapon;
+
+    public Explorer(Weapon weapon) {
+        this.weapon = weapon;
+    }
+}
+```
+
+```java filename="Sword.java" copy
+public final class Sword extends Weapon { // 새로 추가된 무기
+    // ...
+}
+```
+
+이와 대조되게 추상 클래스로 `Weapon{:java}`를 생성자 내의 인자로 받아왔을 때는
+
+얼마나 무기가 추가되던 `Explorer{:java}`은 변경될 필요가 없다.
+
+구체 클래스가 아닌 추상 클래스에 의존하여 변경해야 하는 지점이 2개(생성자 및 새로운 구체 클래스 작성)에서
+
+1개(새로운 구체 클래스 작성)로 줄어든 것이다.
+
+무기가 늘어났지만(확장), 변경은 거의 일어나지 않았다.
+
+이거를 확장에 열려있고 변경에 닫혀있다고 표현한 것이다.
+
+---
+
+# 정리 및 다양한 DI 방법
+
+돌아보면, 즉 **Composition**인 멤버 변수를 **Dependency**라고 부른 것이고,
+
+해당 멤버 변수를 생성자를 호출할 때 외부에서 넣어주는 것을 **DI**(Dependency Injection)라고 부른 것이고,
+
+**DI**를 할 때, 구체 클래스가 아닌 추상 클래스를 넣어서 **DIP**를 지켰고,
+
+**DIP**원칙을 지킴으로 **OCP**도 충족시켰다.(확장 할 때 변경 지점 최소화)
+
+이들을 따로 보지 말고, 전부 연결해서 하나의 흐름으로 인식하면서 코드를 작성해 보면 빠르게 이해 될 것이다.
+
+---
+
+DI의 방식은 생성자로 **Dependency**를 넘기는 것 외에 더 존재하는데,
+
+대부분의 경우 **생성자 주입**을 사용하기에 다른 것들은 간단하게 정리하고 넘어가겠다.
+
+---
+
+## 1. 생성자 주입
+```java filename="Explorer.java" copy
+public final class Explorer {
+    private final Weapon weapon;
+
+    public Explorer(Weapon weapon) {
+        this.weapon = weapon;
+    }
+}
+```
+
+계속 봤기 때문에 설명은 생략한다.
+
+---
+
+## 2. Setter 주입
+```java filename="Explorer.java" copy
+public final class Explorer {
+    private Weapon weapon;
+
+    public setWeapon(Weapon weapon) {
+        this.weapon = weapon;
+    }
+}
+```
+
+Setter는 결국 그냥 메소드이기 때문에 **메소드 주입**이라고 볼 수도 있다.
+
+Setter를 호출해서 멤버 변수(Dependency)를 변경한다.(Injection)
+
+단, 이 경우 `Weapon{:java}`이 `final{:java}`이면 안 된다.
+
+즉, 초기화 이후 변경되서는 안 되는 멤버인 경우는 사용하지 않는 것이 좋을 것이다.
+
+---
+
+## 3. 필드 주입
+```java filename="Explorer.java" copy
+public final class Explorer {
+    private final Weapon weapon = new Sword();
+}
+```
+
+필드(멤버 변수)에 직접 값을 넣어 초기화 하는 것도 **필드 주입**이라고 부른다.
+
+그런데 이렇게 하면 우리가 앞서 만들었던 수 많은 `Weapon{:java}`을 상속 받은 구체 클래스들을 섞어서 사용할 수 없다.
+
+초기화 할 때, 구체 클래스를 특정해줘야 하기 때문이다.
+
+위 경우에는 `Sword{:java}`를 넣어 두었다.
+
+그런데 `Wand{:java}`를 든 모험가를 만들고 싶다면?
+
+결국 setter를 또 만들어야 한다.
+
+처음부터 `Wand{:java}`를 든 모험가를 만들고 싶으면 그냥 생성자 주입을 사용하면 된다.
+
+---
+
+# Spring과 DI
+
+**Spring**은 `@Component{:java}`어노테이션이 붙은 클래스들을 자동으로 **Spring Container**에 추가, 관리한다.
+
+정확히는 Spring Container의 구현체인 `AnnotationConfigApplicationContext{:java}`의 `scan{:java}` 메소드를 통해
+
+`@Component{:java}`이 붙은 클래스를 모두 검색하여 자동으로 인스턴스 생성 및 생성자로 등록된 **Dependency**를 주입하는데,
+
+이를 **Component Scan**이라 부른다.
+
+```java filename="UserController.java" copy
+@Controller
+public final class UserController {
+    private final UserService userService;
+    private final AuthService authService;
+    private final PostService postService;
+
+    @Autowired
+    public UserController(UserService userService, AuthService authService, PostService postService) {
+        this.userService = userService;
+        this.authService = authService;
+        this.postService = postService;
+    }
+}
+```
+
+위 코드에서 `@Controller{:java}` 어노테이션은 내부적으로 `@Component{:java}` 어노테이션을 상속 받고 있기 때문에
+
+**Component Scan**을 할 때, **Bean**으로 등록되어 **Spring Container**에 추가된다.
+
+**Bean**은 그냥 **Spring Container**에 의해 관리되는 인스턴스라고 보면 된다.
+
+그리고 생성자에 붙은 `@Autowired{:java}` 어노테이션은 자동으로 생성자가 인자로 받는 **Dependency**들을 주입한다.
+
+```java copy
+UserController userController = new UserController(
+    new UserService(),
+    new AuthService(),
+    new PostService()
+);
+```
+
+---
+
+원래 같으면 위와 같이 직접 `UserController{:java}` 인스턴스를 생성하고, **Dependency**도 직접 생성해서 넣어줘야 하지만,
+
+이런 과정을 **Spring**이 자동으로 해주는 것이다.
+
+참고로 **Spring Container**를 **IoC Container** 혹은 **DI Container**라고도 부르는데,
+
+**IoC**(Inversion of Control)를 번역하면 **제어의 역전**이라는 뜻으로,
+
+**Spring**이 사용자 대신 인스턴스를 생성 및 관리해주기 때문에 사용자가 제어할 일을 **Spring** 프레임워크가 대신 해줬기 때문에 이렇게 부른다.
+
+**DI Container**라고 부르는 이유는 제어의 권한이 사용자에서 **Spring** 프레임워크로 역전되어 **DI**를 해주기 때문이다.
+
+처음 보면 말이 어려워서 그렇지 그냥 당연한 소리를 하는 것이다.
+
+어쨌든 스프링 덕분에 아래와 같이 직접 모든 인스턴스를 직접 생성할 필요가 없어졌다.
+
+---
+
+```java copy
+UserController userController = new UserController(
+    // ...
+);
+
+UserService userService = new UserService(
+    // ...
+);
+
+UserRepository userRepository = new UserRepository(
+    // ...
+);
+
+AuthController authController = new AuthController(
+    // ...
+);
+
+AuthService authService = new AuthService(
+    // ...
+);
+
+AuthRepository authRepository = new AuthRepository(
+    // ...
+);
+
+PostController postController = new PostController(
+    // ...
+);
+
+PostService postService = new PostService(
+    // ...
+);
+
+PostRepository postRepository = new PostRepository(
+    // ...
+);
+```
+
+그저 사용할 인스턴스를 `@Controller{:java}`, `@Service{:java}`, `@Repository{:java}` 등의 어노테이션을 붙여주면
+
+**Spring Container**에 자동으로 인스턴스 생성 및 등록을 해줘서 작성 및 변경할 코드가 상당히 줄어들었다.
+
+아까 **DIP**를 통해 생성자에서 받는 인자의 타입을 구체 클래스 -> 추상 클래스로 바꿔서 변경 지점을 최소화 했던 것이 기억날 것이다.
+
+**마찬가지로 **Spring**도 새로운 **Dependency**가 추가될 때, 변경할 지점을 최소화 해준다.**
+
+```java filename="UserController.java" copy
+@Controller
+public final class UserController {
+    private final UserService userService;
+    private final AuthService authService;
+    private final PostService postService;
+    // 새로 추가된 Dependency
+    private final ExtraService extraService;
+
+    @Autowired
+    public UserController(UserService userService, AuthService authService, PostService postService, ExtraService extraService) {
+        this.userService = userService;
+        this.authService = authService;
+        this.postService = postService;
+        // 새로 추가된 Dependency
+        this.extraService = extraService;
+    }
+}
+```
+
+만약 위와 같이 새로운 **Dependency**가 추가되었다면, `UserController{:java}`를 인스턴스화 하는 부분도 변경되어야 할 것이다.
+
+```java copy
+UserController userController = new UserController(
+    new UserService(),
+    new AuthService(),
+    new PostService(),
+    // 새로 추가된 Dependency
+    new ExtraService()
+);
+```
+
+하지만 우리는 이 코드를 작성할 필요가 없다.
+
+**Spring**이 대신 해주기 때문에.
+
+즉, 애초에 인스턴스화 하는 부분이 없기 때문에 변경할 필요도 없다.
+
+**변경 지점**이 줄어든 것을 확인했다.

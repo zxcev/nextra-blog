@@ -1,0 +1,890 @@
+# 1. Static Array와 Sized Type
+
+```c
+int main()
+{
+	int arr[] = { 1, 2, 3, 4 };
+}
+```
+
+C에서 배열을 생성하면 기본적으로 Stack에 저장된다.
+
+배열은 Stack에 생성되며, 항상 크기가 고정인 **Static Array**다.
+
+요소 4개로 초기화 했기 때문에 항상 길이는 4, 실제 메모리 상에서 차지하는 크기는 `sizeof(int) * 4` 로 16byte일 것이다.
+
+![image](https://private-user-images.githubusercontent.com/121966058/249568355-5ab30417-4f04-412b-814e-69f9cfc8c45c.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MjU2MDY4MjEsIm5iZiI6MTcyNTYwNjUyMSwicGF0aCI6Ii8xMjE5NjYwNTgvMjQ5NTY4MzU1LTVhYjMwNDE3LTRmMDQtNDEyYi04MTRlLTY5ZjljZmM4YzQ1Yy5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjQwOTA2JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI0MDkwNlQwNzA4NDFaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT1jZWQyZDQzNjg3ZmMwYTEyNmVmOGI0ZDRmZGU2MDk5NTlmY2ZiYjgzMjgwMTlmOWNhYWMyOTBmZGYxODYyMDRlJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCZhY3Rvcl9pZD0wJmtleV9pZD0wJnJlcG9faWQ9MCJ9.QadKEQ1oAbKf__qhWsr0T-3lZUg_Vb_EhMPkSnH4OCk)
+
+
+이를 이해하기 편하게 시각화 해서 보면 위와 같다.
+
+한 칸에 4byte이므로 배열의 범위는 `0x16f657610` ~ `0x16f65761f`
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/3d86ad65-df65-4e51-ac43-cead3aee9273)
+
+
+메모리 뷰 상에서도 동일하게 보여진다.
+
+그런데 만약 이 배열의 index 4에 새로운 요소를 추가하고 싶으면 어떻게 해야 할까.
+
+메모리 뷰 상에서 바로 다음 줄인 `0x16f657620` ~ `0x16f657623` 4byte 메모리 공간에 요소를 추가해야 할 것이다.
+
+이렇게 되면 다른 변수가 사용 중인 메모리 영역을 침범하게 되어 **undefined behaviour**이 발생할 것이다.
+
+처음부터 5칸을 잡아 놓으면 되는 것 아닐까?
+
+지금 가정하는 상황은 처음에 잡아놓은 메모리 공간을 **런타임**에 늘리는 것이기 때문에 논외다.
+
+Stack에 쌓이는 변수는 반드시 **컴파일 타임**에 크기를 알아야 한다.
+
+배열 리터럴 문법으로 초기화 시, 배열 리터럴 내의 요소를 보고 갯수를 알 수 있기 때문에 컴파일러는 크기를 추정할 수 있다.
+
+`int` 요소 4개이므로 16byte, 이런식으로 계산한다.
+
+Stack은 크기가 Heap에 비해 매우 작다.
+
+일반적으로 Code, Data 영역보다도 작을 것이다.
+
+대체로 1MB에 불과하며, 프로세스 실행 중에 크기가 늘어날 수 없다.
+
+실행 중에 데이터가 계속 쌓여서 Stack의 메모리 범위를 초과하게 되면 Stack Overflow 오류가 발생하여 프로세스 실행이 중단되기 때문에, 컴파일러는 미리 Stack의 크기를 컴파일 시 계산한다.
+
+계산 과정을 짧게 요약하면 다음과 같다.
+
+<aside>
+💡 C 언어 컴파일러는 스택의 크기를 컴파일 타임에 정적으로 계산합니다. 이 계산은 프로그램의 구조와 변수 사용 패턴을 분석하여 수행됩니다.
+
+스택은 함수 호출, 지역 변수 및 재귀 호출과 같은 프로그램 실행 중에 발생하는 일시적인 데이터를 저장하는 데 사용됩니다. 컴파일러는 각 함수가 호출될 때 필요한 스택 공간을 계산하여 프로그램의 스택 요구 사항을 파악합니다.
+
+보통 컴파일러는 다음과 같은 방법으로 스택 크기를 계산합니다:
+
+1. 함수 호출 계산: 컴파일러는 프로그램에서 호출되는 함수의 수와 각 함수의 인수 및 지역 변수 크기를 분석합니다. 이를 통해 각 함수 호출에 필요한 스택 공간을 추정합니다.
+2. 재귀 호출 계산: 재귀 함수는 함수 자체를 호출하는 것으로 인해 스택에 추가적인 공간을 필요로 합니다. 컴파일러는 재귀 함수의 호출 깊이와 각 호출에서 사용되는 스택 공간을 분석하여 재귀 호출에 필요한 스택 크기를 추정합니다.
+3. 지역 변수 계산: 컴파일러는 각 함수에서 선언된 지역 변수의 크기를 파악하여 스택에 필요한 추가 공간을 계산합니다.
+</aside>
+
+그래서 컴파일 타임에 크기를 알 수 있는 데이터만 Stack에 저장해야 하는 것이다.
+
+배열의 크기가 처음에 4였는데 사용자가 프로세스 실행 중에 마음대로 요소를 추가할 수 있다고 하면 수천, 수만 개의 요소를 추가하며 Stack을 마음대로 터뜨릴 수 있을 것이다.
+
+이는 Stack Overflow 오류 발생과 동시에 소유권을 벗어난 메모리에 접근 및 수정하는 것과 동일한 개념이므로 결코 사용해서는 안 되는 방식이다.
+
+---
+
+# 2. Dynamic Array
+
+Dynamic Array는 프로세스 실행 중에 크기가 동적으로 변할 수 있는 **동적 배열**을 뜻한다.
+
+Stack에는 반드시 고정 크기의 Sized Type 데이터만 저장할 수 있다고 했었으니 런타임에 동적으로 크기가 변하는 Unsized Type의 데이터들은 Heap에 저장하면 될 것이다.
+
+그렇다.
+
+실행 중에(동적으로) 배열의 크기를 늘릴 수 있는 경우는 Heap에 모든 요소들을 저장하고, 해당 메모리 공간의 시작 주소만 Stack에 저장하는 방식이 일반적으로 사용된다.
+
+시작 주소를 Stack에 저장한다는 것은 포인터 변수를 Stack에 하나 만들겠다는 것인데, 실제 데이터가 몇byte가 되었건 포인터는 언제나 8byte다.
+
+고로 컴파일 타임에 언제나 8byte임을 알 수 있으며, 그 크기는 실행 중에도 변하지 않을 것이다.
+
+```c
+#include <stdlib.h>
+
+int main()
+{
+
+	// Heap 상에 할당할 Static Array의 길이
+	int len = 4;
+
+	// Heap에 int 4칸짜리 Static Array에 필요한 byte만큼 동적 할당한 뒤,
+	// 그 시작 주소를 반환하여 포인터에 저장
+	int* arr = malloc(sizeof(int) * len);
+
+	// 초기화
+	for (int i = 0; i < len; i++) {
+		arr[i] = i + 1;
+	}
+
+}
+```
+
+이제 `malloc` 을 통해 Heap에 배열을 생성했다.
+
+다만 Static Array인 것은 여전하다.
+
+한 번 할당된 배열의 크기를 늘리는 것은 불가능하기 때문이다.(메모리 공간을 옮기지 않고서는)
+
+Stack이던 Heap이던 상관 없이 배열 뒤에 어떤 데이터가 들어 있을지를 알 수는 없지만,
+
+Big O식 마인드로 최악의 경우에 얼마나 위험할지 상상해보자.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/fb727da1-1018-4753-8fa9-b0dd8c8faef5)
+
+우리가 작성하는 프로그램이 자율 주행 차량에 탑재될 프로그램이라고 가정하고,
+
+운이 없게도 우리가 동적 할당한 Static Array의 메모리 공간 바로 뒤에 **자율 주행 차량의 현재 속도**에 대한 변수가 저장되어 있다고 생각해보자.
+
+```c
+arr[4] = 250;
+```
+
+거기에 `250` 을 할당한다면?
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/4a5a6542-ac28-42c3-b626-43eb340b8d67)
+
+`250` 으로 메모리 공간의 값이 변경되며 자율 주행 차량의 속도가 `250` 으로 변할 것이다.
+
+이 때문에 신호에 걸려 멈춰있다가 갑자기 시속 250km으로 급발진하며 횡단보도를 지나가던 사람을 무자비하게 쳐버릴지도 모른다.
+
+(물론 실제 자율 주행 프로그램이 이토록 허술하게 작성되지도 않았을 것이고 속도 단위도 이런 식으로 표현하지는 않았겠지만, 최대한 이해를 돕기 위해 예제를 단순하게 작성했다.
+
+현실성이 떨어져서 와닿지 않는 사람들이 있다면 사과드린다.)
+
+소유권이 없는 메모리 공간에 임의로 접근 및 변경하는 행위는 이토록 매우 위험하다.
+
+안 하는게 좋은 것이 아니라, **절대로 하면 안 되는 행위**라는 것을 반드시 기억하자.
+
+C, C++는 소유권이 없는 메모리 공간에 임의로 접근이 가능한 경우가 있기 때문에 위와 같이 메모리 관련 문제가 발생하는 경우가 상당히 많다.
+
+그래서 아래 링크로 들어가 보면 NSA(미국 국가안보국)에서도 C, C++ 대신 Rust, Go, C# 등의 언어를 사용할 것을 권장하는데, 어디 구멍가게가 아니라 세계 최고의 기업들에서 일하는 최고 수준의 엔지니어들도 메모리 관련 문제로부터 벗어날 수 없다는 것을 알 수 있다.
+
+https://zdnet.co.kr/view/?no=20221113014635
+
+이런 문제로 인해 Heap에 저장된 Static Array의 크기를 늘릴 때도 무턱대고 요소를 바로 뒤에 추가하는 것이 아니라,
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/546cef31-6860-4ac9-b0c7-fa27a577ed75)
+
+위와 같이 통째로 다른 메모리 공간에 재할당 해야한다.
+
+이제 자율 주행 차량의 속도가 저장된 메모리 공간은 전혀 영향을 받지 않을 것이다.
+
+이게 끝은 아니고, 하나 추가적인 작업이 필요하다.
+
+C는 대부분의 경우, 자동으로 초기화를 해주지 않기 때문에 메모리 공간에 담긴 값은 이전에 다른 변수에 의해 사용되던 쓰레기 값이다.
+
+그래서 `memcpy` 를 이용하여 기존의 모든 요소를 새로운 메모리 공간에 복사해야 한다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/1ef2cc8c-4ebc-42f9-9b5d-d63ff8a4dcad)
+
+이전 배열과 완전히 같은 값을 갖되 용량은 2배가 되었다.
+
+이제 요소를 하나 추가해도 아무런 문제가 없다.
+
+```c
+arr[4] = 5;
+```
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/6304b689-0e7a-43e9-814b-36a52eb6485c)
+
+Stack에는 Heap 상의 Static Array의 시작 주소만 저장하는 포인터만 하나 두면 되기 때문에,
+
+실제 Static Array의 크기와 상관 없이 언제나 8byte이므로, Sized Type이다.
+
+동적 배열은 이런 식으로 구현하면 된다.
+
+실제 코드를 살펴보자
+
+```c
+#include <stdlib.h>
+#include <string.h>
+
+int main()
+{
+
+		// Heap 상에 할당할 Static Array의 길이
+		int len = 4;
+
+		// Heap에 int 4칸짜리 Static Array에 필요한 byte만큼 동적 할당한 뒤,
+		// 그 시작 주소를 반환하여 포인터에 저장
+		int* arr = malloc(sizeof(int) * len);
+
+		// 초기화
+		for (int i = 0; i < len; i++) {
+			arr[i] = i+1;
+		}
+
+		// 이전 len보다 2배 크기로 Heap 상의 새로운 메모리 공간에 재할당
+		int* arr2 = malloc(sizeof(int) * len * 2);
+
+		// arr2는 아직 초기화 되지 않았기 때문에 쓰레기 값을 가지고 있음
+		// memcpy로 arr에 저장된 모든 요소를 arr2에 copy
+		memcpy(arr2, arr, sizeof(int) * len);
+
+		// 이제 용량이 2배가 되어 index 4에도 안전하게 접근할 수 있다.
+		arr2[4] = 5;
+
+		// 동적 할당된 메모리는 반드시 수동으로 할당 해제해야 한다.
+		// 그렇지 않으면 메모리 누수가 발생하기 때문이다.
+		free(arr);
+		free(arr2);
+}
+```
+
+대부분 앞서 설명한 내용이라 이해가 잘 될 것이라 생각한다.
+
+마지막 `free` 를 호출하는 부분에 대해서만 살짝 추가 설명을 하고 넘어가겠다.
+
+`malloc` 은 Heap 상에서 **어떤 변수도 사용하지 않는 메모리 공간**을 찾아서 동적 할당 하기 때문에 안전한 메모리 영역을 원하는 크기만큼 할당받았다는 것이 보장된다.
+
+`free` 는 이제 해당 메모리 공간을 사용하지 않겠다고 알려주는 **할당 해제** 함수다.
+
+해당 메모리 공간을 자유롭게 놓아주겠다는 것이다.
+
+다 사용된 뒤 `free` 로 해제하지 않으면 해당 메모리 공간은 사용중인 것으로 인식되어 다른 변수에 의해 재활용 될 수 없을 것이다.
+
+또 극단적인 예를 들면, 8GB RAM을 장착한 PC에서 4GB에 달하는 메모리 영역이 `free` 되지 않았다면 실질적으로 사용할 수 있는 공간은 4GB로 반토막 날 것이다.
+
+이를 **메모리 누수**라고 부른다.
+
+<aside>
+💡 `free` 로 할당 해제할 메모리 공간의 크기가 몇 byte인지 인자로 전달해 주지 않았는데, 어떻게 이를 파악하는지 궁금할 수도 있다. 이는 C에 의해 커널 내에서 관리되는 테이블에 저장되거나 `malloc` 시, 동적 할당 할 메모리 공간의 바로 앞 메모리 공간에 크기를 저장해두고 `free` 할 때 읽어서 알 수 있다고 한다. 구현 방식은 Platform이나 버전마다 다를 것이다.
+
+</aside>
+
+---
+
+# 3. 언어별 Dynamic Array의 구현 살펴보기
+
+앞서 런타임에 Stack에 동적으로 크기가 변하는 배열을 할당할 수 없는 문제,
+
+소유권이 없는 메모리 공간에 접근 및 수정하는 문제를 모두 해결했다.
+
+미리 Heap에 용량이 4인 Static Array를 동적 할당해 놓고,
+
+꽉 차면 새로운 메모리 공간을 2배 크기로 다시금 동적 할당하였고, 기존 Static Array의 모든 요소를 복사 및 해제하는 방식으로 구현했다.
+
+이런 식으로 요소가 계속 추가되어 재할당을 반복하는 코드를 작성한 코드다.
+
+```c
+#include <stdlib.h>
+#include <string.h>
+
+int main()
+{
+		// Heap에 Static Array 동적 할당 및 Stack에 해당 메모리 공간의 시작 주소 저장
+		int* arr = malloc(sizeof(int) * 4);
+		// arr에 요소 4개를 모두 저장
+		for (int i = 0; i < len; i++) {
+			arr[i] = i + 1;
+		}
+
+		// arr 용량 초과, Heap 상의 새로운 메모리 공간에 재할당
+		int* arr2 = malloc(sizeof(int) * 8);
+		// 이전 요소 copy
+
+		memcpy(arr2, arr, sizeof(int) * 4);
+		// 이전 Static Array 해제
+		free(arr);
+
+		// 이하 생략
+		int* arr3 = malloc(sizeof(int) * 16);
+		memcpy(arr3, arr2, sizeof(int) * 8);
+		free(arr2);
+
+		int* arr4 = malloc(sizeof(int) * 32);
+		memcpy(arr4, arr3, sizeof(int) * 16);
+		free(arr3);
+
+		// ...
+
+		free(arr4);
+}
+```
+
+Heap에 할당된 Static Array가 가득 찰 때마다 재할당, 기존 요소 복사, 할당 해제를 반복해야 한다.
+
+이렇게 반복적인 코드를 매번 작성하면 가독성과 생산성이 떨어진다.
+
+가장 위험한 것은 `free` 나 `memcpy` 등의 절차를 빠뜨릴 수도 있다는 것이다.
+
+세계 최고 수준의 엔지니어들도 메모리 문제를 항시 맞닥뜨린다고 하는데, 평범한 개발자들은 그보다 훨씬 더 자주 문제를 일으키게 될 것이다.
+
+이런 반복적이고 누락되서는 안되는 최중요 로직들을 자동화시키면 보다 안전하고 편안할 것이다.
+
+이를 위해 구조체와 몇 가지 함수를 구현하여 동적 배열을 자동화 및 추상화 할 것인데,
+
+다른 언어에서는 어떤 식으로 생겨먹었는지 참고해보자.
+
+**Python, C++, Java, Kotlin, Rust** 등 대부분의 언어에는 동적 배열이 미리 구현되어 있는데, 각자 구현명과 메소드명, 사용 방식 등이 비슷하지만 조금씩 다르다.
+
+각 언어에서 어떻게 사용하는지 가볍게 살펴보는 정도로 훑고 지나가자.
+
+### 1. Python의 Dynamic Array(List)
+
+```python
+lst = [1, 2, 3]   # 빈 동적 배열 생성
+lst.append(4)     # 요소 4 추가            -> [1, 2, 3, 4]
+lst.insert(2, 5)  # index 2에 요소 5 추가   -> [1, 2, 5, 3, 4]
+lst.remove(3)     # 값이 3인 요소 제거       -> [1, 2, 5, 4]
+length = len(lst) # 동적 배열의 길이         -> 4
+value = lst[0]    # index 0 요소 읽기      -> 1
+```
+
+### 2. C++의 Dynamic Array(vector)
+
+```cpp
+#include <vector>
+
+int main()
+{
+		// 빈 동적 배열 생성
+    std::vector<int> vec;
+
+    vec.push_back(1);  // 동적 배열에 요소 1 추가 -> [1]
+    vec.push_back(2);  // 동적 배열에 요소 2 추가 -> [1, 2]
+    vec.push_back(3);  // 동적 배열에 요소 3 추가 -> [1, 2, 3]
+    vec.push_back(4);  // 동적 배열에 요소 4 추가 -> [1, 2, 3, 4]
+
+		// index 2에 요소 5 삽입                    -> [1, 2, 5, 3, 4]
+    vec.insert(my_vector.begin() + 2, 5);
+
+		// index 3인 요소 삭제                      -> [1, 2, 5, 4]
+    vec.erase(my_vector.begin() + 3);
+
+		// 동적 배열의 크기                           -> 4
+    int size = my_vector.size();
+
+		// index 0 요소 읽기                        -> 1
+    int value = my_vector[0];
+}
+```
+
+### 3. Java의 Dynamic Array(ArrayList)
+
+```java
+import java.util.ArrayList;
+
+public class Main {
+    public static void main(String[] args) {
+				// 빈 동적 배열 생성
+        ArrayList<Integer> lst = new ArrayList<>();
+
+        lst.add(1);  // 동적 배열에 요소 1 추가 -> [1]
+        lst.add(2);  // 동적 배열에 요소 2 추가 -> [1, 2]
+        lst.add(3);  // 동적 배열에 요소 3 추가 -> [1, 2, 3]
+        lst.add(4);  // 동적 배열에 요소 4 추가 -> [1, 2, 3, 4]
+
+				// 인덱스 2 위치에 요소 5 삽입          -> [1, 2, 5, 3, 4]
+        lst.add(2, 5);
+
+				// index 3인 요소 삭제               -> [1, 2, 5, 4]
+        lst.remove(3);
+
+				// 동적 배열의 크기                   -> 4
+        int size = lst.size();
+
+				// index 0인 요소 읽기               -> 1
+        int value = lst.get(0);
+
+    }
+}
+```
+
+### 4. Kotlin의 Dynamic Array(ArrayList)
+
+```kotlin
+fun main() {
+		// 빈 동적 배열 생성
+    val lst = ArrayList<Int>()
+
+    lst.add(1)  // 동적 배열에 요소 1 추가 -> [1]
+    lst.add(2)  // 동적 배열에 요소 2 추가 -> [1, 2]
+    lst.add(3)  // 동적 배열에 요소 3 추가 -> [1, 2, 3]
+    lst.add(4)  // 동적 배열에 요소 4 추가 -> [1, 2, 3, 4]
+
+    lst.add(2, 5)  // index 2에 5 삽입  -> [1, 2, 5, 3, 4]
+
+		// index 3인 요소 삭제               -> [1, 2, 5, 4]
+    lst.removeAt(3)
+
+	  // 동적 배열의 크기                   -> 4
+    val size = lst.size
+
+		// index 0인 요소 읽기               -> 1
+    val value = lst[0]
+}
+```
+
+### 5. Rust의 Dynamic Array(Vec)
+
+```rust
+fn main() {
+		// 빈 동적 배열 생성
+    let mut vec: Vec<i32> = Vec::new();
+
+    vec.push(1);  // 동적 배열에 요소 1 추가 -> [1]
+    vec.push(2);  // 동적 배열에 요소 2 추가 -> [1, 2]
+    vec.push(3);  // 동적 배열에 요소 3 추가 -> [1, 2, 3]
+    vec.push(4);  // 동적 배열에 요소 4 추가 -> [1, 2, 3, 4]
+
+		// index 2에 5 삽입                   -> [1, 2, 5, 3, 4]
+    vec.insert(2, 5);
+
+		// index 3인 요소 삭제                 -> [1, 2, 5, 4]
+    vec.remove(3);
+
+		// 동적 배열의 크기                     -> 4
+    let size = vec.len();
+
+		// index 0인 요소 읽기                 -> 1
+    let value = vec[0];
+}
+```
+
+**Python**은 동적 배열을 기본 배열 리터럴 문법으로 생성할 수 있고,
+
+나머지 언어들에서는 `ArrayList` , `Vector` 등의 용어를 사용하는 것을 볼 수 있었다.(Go에서는 `Slice` 라고 하더라)
+
+어떤 언어를 사용하게 되더라도 이들을 보면 일단 **Dynamic Array**를 떠올리면 될 것이다.
+
+메소드 명도 약간 다른데, 맨 뒤에 요소를 추가하는 메소드 명으로는 `push` , `append` 가 주로 사용된다.
+
+**Java, Kotlin**에서는 `add` 를 사용하는데, 메소드 오버로딩을 통해 `add(value)` , `add(index, value)` 2가지를 모두 구현하여 `push` 와 `insert` 의 역할을 둘 다 할 수 있기 때문에 구분하려고 그런듯하다.
+
+`insert` 는 맨 뒤가 아니라 배열 중간에 삽입하는 메소드로, `index` 와 `value` 를 함께 주면 된다.
+
+마지막으로 `remove` 는 배열 내의 요소를 제거하는데, 이 때 삭제할 요소의 index를 넘겨주면 된다.
+
+단, **Python**은 삭제할 요소의 index가 아닌 값을 받도록 되어있다.
+
+이렇게 대략적으로 어떤 식으로 만들어야 하는지 다른 언어의 동적 배열을 살펴봤는데, 한국에서는 대부분 **Java**를 사용하기 때문에, 구조체와 메소드 명을 **Java**에 맞춰서 만들어보도록 하겠다.
+
+**Java**에서 동적 배열은 `ArrayList` 다.
+
+---
+
+# 4. ArrayList 구현
+
+## 1. `len` 과 `cap` 의 차이
+
+```c
+typedef struct {
+		int* ptr;
+		int len;
+		int cap;
+} ArrayList;
+```
+
+구조체 `ArrayList` 를 만들었다.
+
+필드는 3개로,
+
+`ptr` 은 동적으로 할당한 Static Array의 시작 주소를 담은 포인터,
+
+`len` 은 Static Array의 논리적인 길이,
+
+`cap` 은 Static Array의 물리적인 용량에 해당한다.
+
+`len` 과 `cap` 의 차이가 헷갈릴 수 있기 때문에 몇가지 그림을 통해 자세히 살펴보자.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/18569578-7189-44ea-8c71-2931f7d53be2)
+
+`malloc` 을 통해 `sizeof(int) * 2` 크기의 메모리 공간을 Heap에 할당 받았다.
+
+물리적으로 배열 크기는 2칸이지만, 아직 아무런 요소도 넣지 않은 상태이기 때문에 `len` 은 0이고,
+
+따라서 논리적으로는 아무런 요소도 존재하지 않는다고 보는 것이다.
+
+이러한 논리적인 빈 칸을 어두운 색상으로 표시할 것이다.
+
+(실제로는 이전에 다른 변수에 의해 쓰여진 쓰레기 값이 담겨있을 것이다.)
+
+이 때, `cap` 은 `2` 이며, `len` 은 `0` 이다.
+
+소유권을 가진 메모리 공간은 `2` 칸이며, 배열에 추가한 값은 `0` 개인 것이다.
+
+`cap` 을 물리적인 실제 배열의 크기로, `len` 을 논리적인 배열의 크기로 생각하면 된다.
+
+```python
+arr = [1, 2, 3]
+```
+
+위 **Python** 코드로 작성한 배열의 길이가 몇으로 보이는가?
+
+눈에 보이는 요소가 3개이므로 `3` 일 것이다.
+
+하지만 **CPython**의 소스 코드를 읽어보면 아래와 같이 적혀있다.
+
+<aside>
+💡 The growth pattern is: 0, 4, 8, 16, 24, 32, 40, 52, 64, 76, …
+
+</aside>
+
+내부적으로 Static Array를 갖고 있다가 메모리 공간이 가득 차게 되면
+
+0, 4, 8, 16, … 의 패턴으로 크기를 늘린 새로운 메모리 공간으로 재할당을 한다는 뜻이다.
+
+즉, `cap` 이 증가하는 패턴이다.
+
+위 패턴으로 보아 `arr` 은 3개의 요소가 들어있고, 실제로는 4칸의 메모리 공간이 존재할 것이다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/76a887f6-3f0e-4190-b753-58c1896e5fea)
+
+고로 `arr` 의 `len` 은 `3` 이고 `cap` 은 `4` 일 것이다.
+
+사용자가 보기엔 3개의 요소가 들어있지만, 내부적으로 동적 할당 된 메모리 공간은 4칸인 것이다.
+
+그래서 논리적인 크기를 `len` , 물리적인 용량을 `cap` 이라고 생각하면 된다고 한 것이다.
+
+---
+
+## 2. `new(int)`
+
+C는 Java처럼 새로운 인스턴스를 만들어주는 생성자가 존재하지 않는다.
+
+그래서 직접 생성자 함수를 만들어서 사용해야 한다.
+
+```c
+ArrayList new(int cap)
+{
+		// 실제로 데이터를 저장할 Static Array를 Heap 상에 동적 할당한 뒤,
+		// 시작 주소만을 반환하여 포인터에 저장
+		int* ptr = malloc(sizeof(int) * cap);
+
+		// ArrayList 구조체 생성 및 반환
+		ArrayList arr = {
+				.ptr = ptr,
+				.len = 0,
+				.cap = cap,
+		};
+
+		return arr;
+}
+```
+
+---
+
+## 3. `resize(ArrayList*)`
+
+Heap에 위치한 Static Array가 가득 차면 다른 메모리 공간에 `cap` 이 2배인 Static Array를 재할당 했었다.
+
+해당 기능을 하는 함수를 `resize` 라는 이름으로 구현했다.
+
+```c
+void resize(ArrayList* arr)
+{
+		// cap을 2배로 증가시킴
+		arr->cap *= 2;
+
+		// cap을 2배로 Heap에 Static Array 재할당
+		int* next_ptr = malloc(sizeof(int) * arr->cap);
+
+		// 기존 Static Array에 저장된 모든 데이터를 새로운 Static Array에 복사
+		memcpy(next_ptr, arr->ptr, arr->len);
+
+		// 기존 Static Array 할당 해제
+		free(arr->ptr);
+
+		// arr->ptr에 새로운 Static Array의 주소 저장
+		arr->ptr = next_ptr;
+}
+```
+
+이제 2배 크기의 배열을 재할당하고, 기존 배열의 데이터를 복사하고, 기존 배열을 할당 해제하는 로직을 매번 작성할 필요 없이,
+
+`resize` 함수만 호출하면 모든 것을 자동으로 처리해줄 것이다.
+
+---
+
+## 4. `add(ArrayList*, int)`
+
+요소를 Static Array의 마지막에 추가하는 함수다.
+
+요소를 추가하는 로직은 매우 간단하다.
+
+`resize` 함수를 미리 만들어뒀기에 아래와 같이 간단하게 작성할 수 있을 것이다.
+
+```c
+void add(ArrayList* arr, int value)
+{
+		// len이 cap과 같다면 요소를 추가할 공간이 없음
+		// resize 함수를 호출하여 용량을 2배 증가시킴
+		if (arr->len == arr->cap)
+		{
+				resize(arr);
+		}
+
+		// arr->len++은 arr->len으로 평가된 뒤 1 증가함
+		// 즉, Static Array의 len번째 메모리 공간에 value를 삽입
+		arr->ptr[arr->len++] = value;
+}
+```
+
+---
+
+## 5. `insert(ArrayList*, int, int)`
+
+요소를 Static Array의 특정 index에 삽입하는 함수다.
+
+동적 배열도 내부적으로 Static Array이므로, 요소를 삽입할 index 부터 last index까지 모든 요소를 한 칸씩 뒤로 이동시켜야 한다.
+
+다음과 같이 index 1에 `100` 을 삽입한다면 index + 1 ~ last index 범위에 속하는 `2` , `3` , `4` 를 모두 한 칸씩 뒤로 이동시켜야 하는 것이다.
+
+index + 1부터 범위에 속하는 이유는, index에는 새로운 값을 넣어 덮어줄 것이기 때문이다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/e1fabc0d-02ab-40d7-abcf-263db9ef0cdb)
+
+```c
+void insert(ArrayList* arr, int index, int value)
+{
+		// 삽입하려는 index가 len일 경우, add와 동일
+		// 그러나 index가 음수거나 len보다 클 경우는 불가능
+		assert(index >= 0 && index <= arr->len);
+
+		// len이 cap과 같다면 요소를 추가할 공간이 없음
+		// resize 함수를 호출하여 용량을 2배 증가시킴
+		if (arr->len == arr->cap)
+		{
+				resize(arr);
+		}
+
+		// 위에서 resize를 해주기 때문에 cap은 항상 len보다 크다는 것이 보장됨
+		// 고로 last index + 1과 같은 len부터 index + 1까지 순회하며
+		// Static Array[i]를 Static Array[i - 1]로 덮어 쓸 수 있음
+		for (int i = arr->len; i > index; i--)
+		{
+				arr->ptr[i] = arr->ptr[i - 1];
+		}
+
+		// index에는 인자로 받은 새로운 요소를 넣어줄 것이기 때문에 위에서 처리해주지 않았음
+		arr->ptr[index] = value;
+
+		// 요소가 늘었으므로 len도 증가
+		arr->len++;
+}
+```
+
+---
+
+## 6. `remove(ArrayList*, int)`
+
+index에 위치한 요소를 제거하는 함수다.
+
+이전과 반대로 index + 1부터 last index에 위치한 요소를 모두 한 칸씩 앞으로 당겨준다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/c93d0bbf-1b52-4693-9cc1-bc854feb04c7)
+
+```c
+void remove(ArrayList* arr, int index)
+{
+		// 요소가 반드시 1개 이상 존재해야 하며,
+		// 제거하려는 요소의 index는 len보다 작아야 할 것
+		assert(arr->len > 0 && index < arr->len);
+
+		// index ~ last index - 1까지 반복
+		for (int i = index; i < arr->len - 1; i++)
+		{
+				// i에 위치한 요소를 i + 1에 위치한 요소로 덮어 씀(한 칸씩 당겨줌)
+				arr->ptr[i] = arr->ptr[i + 1];
+		}
+
+		// 요소가 줄었으므로 len도 감소
+		arr->len--;
+}
+```
+
+위 코드에서 `for` loop가 실행되는 과정을 자세히 살펴보자
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/f21e4985-952d-49ba-a555-a579a9b3a08a)
+
+`for` loop가 한 번 돌 때마다 `i` 와 `i + 1` 에 위치한 요소 2개가 동시에 선택된다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/aea5c5d4-74f8-46ff-814f-cf82628eb251)
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/2b93fc41-6337-4e69-b40a-4ae5af7b876b)
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/2917c855-a624-43d5-ab7c-0608f58a6149)
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/9c5bb5b3-61fd-4df7-9a76-10c2d23c5ab8)
+
+만약 loop의 범위가 아래와 같았다면 어땠을까
+
+```c
+for (int i = index; i < arr->len; i++)
+{
+		// ...
+}
+```
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/1fe6ee0e-1569-415b-87ea-3936be57e329)
+
+위와 같이 소유권을 벗어나 last index + 1에 접근했을 것이다.
+
+소유권이 없는 메모리 공간에 접근하는 일은 절대로 있어서는 안 된다.
+
+`for` loop를 작성하거나 읽을 때,
+
+먼저 최대 범위를 생각해야 한다.
+
+`i < arr->len` 은 `len` 이 포함되지 않으므로, `i` 의 최댓값은 last index이 된다.
+
+그럼 배열 접근 로직을 보고 최대 접근 index를 생각해보자.
+
+```c
+arr->ptr[i] = arr->ptr[i + 1];
+```
+
+최대 접근 index는 `i + 1` 다.
+
+`i` 의 최댓값이 last index이므로, last index + 1이 최대 접근 index다.
+
+loop가 반복될 때마다 2개의 요소에 접근하기 때문에 이런 식으로 작성되었으며
+
+`i < arr->len - 1` 은 최댓값이 last index - 1이므로
+
+최대 접근 index는 (last index - 1) + 1, 즉 last index가 된 것이다.
+
+범위가 난해할 때는 이렇게 범위의 최댓값과 최대 접근 index를 먼저 고려해보자.
+
+---
+
+## 7. `drop(ArrayList*)`
+
+ArrayList의 내부에 저장된 Static Array는 Heap에 동적 할당되었기 때문에 수동으로 해제할 필요가 있다.
+
+이를 위해 함수를 하나 작성하였다.
+
+```c
+void drop(ArrayList* arr)
+{
+		free(arr->ptr);
+}
+```
+
+항상 동적 할당된 메모리 공간을 반드시 해제할 것을 잊지 말자.
+
+---
+
+# 5. 전체 코드
+
+전체 코드를 아래 첨부하며 마치겠다.
+
+`get` , `set` , `size` , `is_empty` 등의 함수는 구현이 매우 간단하므로 따로 코드를 설명하지 않을 것이다.
+
+직접 구현해보기를 바란다.
+
+```c
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct {
+	int* ptr;
+	int len;
+	int cap;
+} ArrayList;
+
+ArrayList new(int cap)
+{
+	// 실제로 데이터를 저장할 Static Array를 Heap 상에 동적 할당한 뒤,
+	// 시작 주소만을 반환하여 포인터에 저장
+	int* ptr = malloc(sizeof(int) * cap);
+
+	// ArrayList 구조체 생성 및 반환
+	ArrayList arr = {
+		.ptr = ptr,
+		.len = 0,
+		.cap = cap,
+	};
+
+	return arr;
+}
+
+void resize(ArrayList* arr)
+{
+	// cap을 2배로 증가시킴
+	arr->cap *= 2;
+
+	// cap을 2배로 Heap에 Static Array 재할당
+	int* next_ptr = malloc(sizeof(int) * arr->cap);
+
+	// 기존 Static Array에 저장된 모든 데이터를 새로운 Static Array에 복사
+	memcpy(next_ptr, arr->ptr, arr->len);
+
+	// 기존 Static Array 할당 해제
+	free(arr->ptr);
+
+	// arr->ptr에 새로운 Static Array의 주소 저장
+	arr->ptr = next_ptr;
+}
+
+void add(ArrayList* arr, int value)
+{
+	// len이 cap과 같다면 요소를 추가할 공간이 없음
+	// resize 함수를 호출하여 용량을 2배 증가시킴
+	if (arr->len == arr->cap)
+	{
+		resize(arr);
+	}
+
+	// arr->len++은 arr->len으로 평가된 뒤 1 증가함
+	// 즉, Static Array의 len번째 메모리 공간에 value를 삽입
+	arr->ptr[arr->len++] = value;
+}
+
+void insert(ArrayList* arr, int index, int value)
+{
+	// 삽입하려는 index가 len일 경우, add와 동일
+	// 그러나 index가 음수거나 len보다 클 경우는 불가능
+	assert(index >= 0 && index <= arr->len);
+
+	// len이 cap과 같다면 요소를 추가할 공간이 없음
+	// resize 함수를 호출하여 용량을 2배 증가시킴
+	if (arr->len == arr->cap)
+	{
+		resize(arr);
+	}
+
+	// 위에서 resize를 해주기 때문에 cap은 항상 len보다 크다는 것이 보장됨
+	// 고로 last index + 1과 같은 len부터 index + 1까지 순회하며
+	// Static Array[i]를 Static Array[i - 1]로 덮어 쓸 수 있음
+	for (int i = arr->len; i > index; i--)
+	{
+		arr->ptr[i] = arr->ptr[i - 1];
+	}
+
+	// index에는 인자로 받은 새로운 요소를 넣어줄 것이기 때문에 위에서 처리해주지 않았음
+	arr->ptr[index] = value;
+
+	// 요소가 늘었으므로 len도 증가
+	arr->len++;
+}
+
+void remove(ArrayList* arr, int index)
+{
+	// 요소가 반드시 1개 이상 존재해야 하며,
+	// 제거하려는 요소의 index는 len보다 작아야 할 것
+	assert(arr->len > 0 && index < arr->len);
+
+	// index ~ last index - 1까지 반복
+	for (int i = index; i < arr->len - 1; i++)
+	{
+		// i에 위치한 요소를 i + 1에 위치한 요소로 덮어 씀(한 칸씩 당겨줌)
+		arr->ptr[i] = arr->ptr[i + 1];
+	}
+
+	// 요소가 줄었으므로 len도 감소
+	arr->len--;
+}
+
+void drop(ArrayList* arr)
+{
+	free(arr->ptr);
+}
+
+int main()
+{
+	ArrayList arr = new(2);
+	add(&arr, 1);
+	add(&arr, 2);
+	insert(&arr, 0, 100);
+	remove(&arr, 0);
+
+	// error cases
+	//
+	// insert(&arr, -1, 100);
+	// insert(&arr, arr.len + 1, 100);
+	// remove(&arr, -1);
+	// remove(&arr, arr.len);
+
+	drop(&arr);
+}
+```

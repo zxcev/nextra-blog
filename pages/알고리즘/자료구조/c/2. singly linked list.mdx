@@ -1,0 +1,688 @@
+# 1. Array와 LinkedList의 차이
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/850acd7d-b8b7-43fd-9a8b-caf4226e8ba4)
+
+지금까지 만들었던 **Stack, Queue, Dynamic Array** 등의 자료 구조들은 모두 **Static Array**를 기반으로 만들어졌기 때문에 모든 요소들이 **연속된 메모리 공간**에 저장되었다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/3a161458-567d-479e-9c75-3a6af8aae96c)
+
+**LinkedList**는 근본적으로 지금까지 만들었던 자료 구조와는 결을 달리 하는데,
+
+요소가 연속된 메모리 공간에 차례대로 저장되는 것이 아니라,
+
+Heap 상에 각 요소들이 **임의로** 분포되어 있다.
+
+또한 기존의 Static Array 기반으로 만들었던 자료 구조들은 각 요소가 순수 데이터만 가지고 있는데,(단순하게 `int` 타입의 정수만 넣었었다.)
+
+**LinkedList**의 각 요소들은 다음 요소의 시작 주소를 담고 있는 **포인터**를 데이터와 함께 가지고 있다.
+
+위 그림을 보면 데이터는 `val` 로, 포인터는 `next` 로 표현되었으며, 각 요소를 일반적으로 **Node**라 일컫는다.
+
+
+
+편의상 위 그림에서는 **Node**를 나란히 배치했지만, 자세히 보면 각 **Node**의 시작 주소가 서로 매우 동떨어져 있는데,
+
+실제로는 아래와 같이 각 **Node**들이 Heap 상에 뒤죽박죽 분포되어 있을 것이다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/6b420762-b4bf-48e2-b709-9cc3f7167de1)
+
+이전에 만들었던 **ArrayList** 처럼 **Stack** 상에는 **LinkedList** 구조체만 저장되어 있다.
+
+구조체 내부에는 총 **Node**의 갯수를 나타내는 `len` 과 Heap에 저장된 첫번째 **Node**의 시작 주소를 담은 포인터인 `head` 가 저장되어 있다.
+
+**ArrayList**는 다음과 같이 작성했었다.
+
+```c filename="arraylist.c"
+typedef struct {
+	int* ptr; // Heap 상에 저장될 실제 Static Array의 시작 주소
+	int len; // 논리적인 Static Array의 길이
+	int cap; // 물리적인 Static Array의 용량
+} ArrayList;
+```
+
+**LinkedList**와 각 요소를 나타내는 구조체에 해당되는 **Node**는 다음과 같이 작성된다.
+
+```c filename="singly_linked_list.c"
+typedef struct Node {
+	struct Node* next; // 다음 Node의 시작 주소를 담은 포인터
+	int val; // 실제 데이터
+} Node;
+
+typedef struct {
+	Node* head; // 첫 번째 Node의 시작 주소를 담은 포인터
+	int len; // LinkedList의 길이
+} SinglyLinkedList;
+```
+
+**ArrayList**와 달리 `cap` 이 없는 이유는, Static Array를 미리 할당 받을 필요가 없기 때문에
+
+미리 공간을 할당 받아둔다는 개념이 없기 때문이다.
+
+**ArrayList**는 아래와 같이 필드로 저장된 `ptr` 에 역참조하여 원하는 요소의 index를 입력하여 값을 읽어올 수 있었다.
+
+```c
+int first = arr.ptr[0]; // 1번째 요소의 값을 first에 저장
+
+int second = arr.ptr[1]; // 2번째 요소의 값을 second에 저장
+
+int third = arr.ptr[2]; // 3번째 요소의 값을 second에 저장
+```
+
+그러나 **LinkedList**는 **Node**들이 Heap에 분산 저장되어 있기 때문에, **ArrayList**처럼 index로 **Node**를 찾아올 수 없다.
+
+```c
+int first = lst.head->val; // 1번째 요소의 값을 first에 저장
+
+int second = lst.head->next->val; // 2번째 요소의 값을 first에 저장
+
+int third = lst.head->next->next->val; // 3번째 요소의 값을 first에 저장
+```
+
+첫 번째 **Node**의 주소는 **LinkedList**의 `head` 에 저장했기 때문에,
+
+`head` 를 역참조하여 `val` 을 읽어오면 된다.
+
+그 이후로는 원하는 index회 만큼 `next` 로 이동하여 값을 읽어오면 된다.
+
+`head` 자체가 첫 번째 요소이기 때문에 첫 번째 요소를 찾을 때는 예외적으로 `next` 로 이동할 필요가 없기 때문이다.
+
+그래서 index회 이동이 필요한 것이다.
+
+간단하지만 헷갈릴 수 있는 이 부분을 반드시 숙지하도록 하자.
+
+---
+
+# 2. SinglyLinkedList 구현
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/a91b2f03-cacd-4ad9-959c-c4a2a21b0eb2)
+
+**LinkedList**는 **SinglyLinkedList**, **DoublyLinkedList** 로 나뉘는데,
+
+앞서 살펴본 **SinglyLinkedList**의 **Node**는 다음 요소를 가리키는 `next` 만 존재하는 반면,
+
+**DoublyLinkedList**는 **Node**의 이전을 가리키는 `prev` , 다음을 가리키는 `next` 가 모두 존재한다.
+
+즉, 다음과 같이 양방향으로 이동할 수 있다.
+
+```c
+Node* p_second = lst.head->next; // 2번째 Node의 주소를 저장
+int second_val = p_second->val; // 2번째 요소의 값을 저장
+
+// prev
+Node* p_first = p_second->prev; // 1번째 Node의 주소를 저장
+int first_val = p_first->val; // 1번째 요소의 값을 저장
+
+// next
+Node* p_third = p_second->next; // 3번째 Node의 주소를 저장
+int third_val = p_third->val; // 3번째 요소의 값을 저장
+```
+
+둘의 차이를 알아보았으니 **DoublyLinkedList**는 뒷부분에서 다시 살펴보도록 하고,
+
+우선 **SinglyLinkedList**를 구현해보도록 하자.
+
+---
+
+## 1. `SinglyLinkedList new_singly_linked_list();{:c}`
+
+```c
+SinglyLinkedList new_singly_linked_list() {
+		SinglyLinkedList s = {
+				.len = 0,
+				.head = NULL,
+		};
+
+		return s;
+}
+```
+
+생성 직후엔 아무런 요소가 없기 때문에 `len` 은 `0` , 첫 번째 **Node**를 가리키는 포인터도 `NULL` 인 구조체 인스턴스를 반환한다.
+
+---
+
+## 2. `Node* new_node(int);`
+
+```c
+Node* new_node(int val) {
+
+	Node* p_node = malloc(sizeof(Node));
+
+  // 초기화
+	p_node->val = val;
+	p_node->next = NULL;
+
+	return p_node;
+}
+```
+
+**Node**를 Heap에 동적 할당한 뒤, 초기화 하여 Heap 상의 시작 주소를 반환한다.
+
+동적 할당된 메모리 공간의 lifetime은 별도로 `free` 하기 전까지는 만료되지 않기 때문에 그대로 반환하여 사용할 수 있다.
+
+---
+
+## 3.  `Node* get(SinglyLinkedList*, int);`
+
+```c
+Node* get(SinglyLinkedList* s, int index) {
+	// index가 last index 이하인 Node만 유효
+	assert(index < s->len);
+
+	// index가 음수인 경우 NULL 반환
+	if (index < 0) return NULL;
+
+	// 첫 번째 Node의 주소를 cursor에 저장
+	Node* cursor = s->head;
+
+	// index회 만큼 다음 Node로 이동
+	for (int i = 0; i < index; i++) {
+		cursor = cursor->next;
+	}
+
+	return cursor;
+}
+```
+
+`index` 번째 **Node**의 주소(포인터)를 반환하는 함수다.
+
+`index` 회 `next` 로 다음 **Node**의 시작 주소로 이동한다.
+
+`0` 인 경우는 이미 `cursor` 에 첫 번째 **Node**의 시작 주소가 들어 있기 때문에 이동할 필요가 없는 것이다.
+
+검증 부분을 살펴보면 알겠지만, `index` 가 `len` 보다 반드시 작아야 하고,
+
+0보다 작으면 `NULL` 을 반환한다.
+
+---
+
+## 4. `void push(SinglyLinkedList*, int);`
+
+```c
+void push(SinglyLinkedList* s, int val) {
+	// 새로 추가할 Node 생성
+	Node* p_node = new_node(val);
+
+	// 마지막 Node 찾기, 만약 빈 LinkedList라면
+	// len - 1은 -1이 되어 p_last_node는 NULL이 될 것
+	Node* p_last_node = get(s, s->len - 1);
+
+	// 빈 list인 경우, head가 NULL이기 때문에
+	// head에 첫 번째 Node의 시작 주소를 등록해야 함
+	if (p_last_node == NULL)
+		s->head = p_node;
+	else
+		// last node의 next로 새로 생성한 node 등록
+		p_last_node->next = p_node;
+
+	s->len++;
+}
+```
+
+`p_last_node` 로 마지막 **Node**를 찾는다.
+
+만약 `len` 이 0인 경우, `get` 으로 `NULL` 을 받아올 것이다.
+
+그 때는 `head` 에 새로운 **Node**를 저장하고,
+
+아닐 때는 그대로 마지막 **Node**의 `next` 에 새로운 **Node**를 저장하면 된다.
+
+이후로는 새로 만든 **Node**가 마지막 **Node**가 될 것이다.
+
+`p_node` 를 마지막 **Node** 의 `next` 로 등록하는 과정을 간단히 표현하면 아래와 같다.
+
+(`p_node` 는 `node` 의 주소를 담은 포인터고, Heap에 저장된 원본은 `node` 다. 헷갈리지 말자.)
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/f1c574ee-ecad-4dab-8825-5e6c767e9ef6)
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/a9671929-f31a-4a09-9409-28c0288d4025)
+
+---
+
+## 5. `void insert(SinglyLinkedList*, int, int);`
+
+```c
+void insert(SinglyLinkedList* s, int index, int val) {
+	// index는 0 ~ len, 즉 0 ~ last index + 1까지 유효
+	// last index + 1에 Node를 삽입하는 것은 push와 같기 때문
+	assert(index >= 0 && index <= s->len);
+
+	// 삽입할 Node 생성
+	Node* p_node = new_node(val);
+	// 삽입할 Node의 직전 Node
+	Node* p_prev_node = get(s, index - 1);
+
+	// index 0에 삽입하는 경우 head에 등록해야 함
+	if (p_prev_node == NULL) {
+		// 1️⃣
+		p_node->next = s->head;
+		s->head = p_node;
+	} else {
+        // index 0 이후 삽입하는 경우
+		// [p_prev_node] -> [p_prev_node->next]
+		//
+		// [p_prev_node] -> [p_node] -> [p_prev_node->next]
+		//
+		// p_node의 next는 p_prev_node->next로,
+		// p_prev_node->next는 p_node로 변경해야 함
+		//
+		// 2️⃣
+		p_node->next = p_prev_node->next;
+		p_prev_node->next = p_node;
+	}
+
+	s->len++;
+
+}
+```
+
+**SinglyLinkedList**의 특정 index에 새로운 **Node**를 삽입하는 함수다.
+
+우선 `assert` 로 0 ~ last index + 1 외에는 삽입할 수 없도록 하였다.
+
+즉, `len` 이 0인 경우는 index 0에만 삽입이 가능하다.
+
+(`len` 이 last index + 1인데 `len` 이 0이면 last index + 1 = 0이라는 뜻이므로. `assert` 문의 조건을 잘 살펴보자)
+
+1인 경우는 index 0, 1에 삽입 가능하다.
+
+last index + 1에 삽입하는 것은 `push` 와 같기 때문이다.
+
+위 코드에서 헷갈릴만한 부분을 1️⃣ , 2️⃣ 로 표시해두었다.
+
+이 부분을 시각화 하여 자세히 살펴보겠다.
+
+먼저 1️⃣ 부터.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/9257f819-dafe-4143-929a-06f9de060bb8)
+
+`head` 는 첫 번째 **Node**의 시작 주소를 담고 있으며, 실제 Heap 상의 첫 번째 **Node** 구조체는 `first` 로 표기하였다.
+
+```c
+// index 0에 삽입하는 경우 head에 등록해야 함
+if (p_prev_node == NULL) {
+	// 1️⃣
+	p_node->next = s->head;
+	s->head = p_node;
+}
+```
+
+index 0에 insert하는 경우에 해당 로직이 실행될 것인데,
+
+`head` 를 새로 만든 `node` 의 주소인 `p_node` 로, `p_node` 의 다음 **Node**를 기존 `head` 로 바꿔주면 될 것이다.
+
+이 때, 순서가 매우 중요하다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/5430115b-482d-43eb-8f9c-03daf7ffdbe6)
+
+`s->head = p_node` 로 먼저 시작 **Node**부터 바꿔주게 된다면,
+
+`first` 에 접근할 방법이 없어진다.
+
+`first` 의 주소를 담고 있던 `head` 가 `p_node` .
+
+즉, `node` 의 주소로 덮어 쓰여지기 때문이다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/f37df4a0-c7e1-4cec-b696-9d75be88bde9)
+
+즉, 위와 같이 `p_node->next` 를 `first` 의 주소인 `head` 로 먼저 바꿔준다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/52c61281-d988-4b7e-bfd0-6a9abd5a1901)
+
+이후 `head` 를 `p_node` 로 바꿔주면 이제 **Node**의 순서는 `p_node` → `first` → `second` 가 된다.
+
+새로 만든 **Node**인 `p_node` 는 `next` 가 애초에 `NULL` 이었기 때문에 기존 값이 덮힐 위험이 없었다.
+
+그러나 `head` 는 `first` , 데이터가 있었기 때문에 기존 데이터가 소실된다.
+
+기존 데이터가 덮힐 위험이 없는 **Node**부터 변경할 수 있도록 주의하여 순서를 지키는 것이 중요하다.
+
+이제 2️⃣ 번 코드를 시각화해보자.
+
+```c
+// ...
+// index 0 이후 삽입하는 경우
+} else {
+	// [p_prev_node] -> [p_prev_node->next]
+	//
+	// [p_prev_node] -> [p_node] -> [p_prev_node->next]
+	//
+	// p_node의 next는 p_prev_node->next로,
+	// p_prev_node->next는 p_node로 변경해야 함
+	//
+	// 2️⃣
+	p_node->next = p_prev_node->next;
+	p_prev_node->next = p_node;
+}
+```
+
+이 코드가 실행되고 있다는 것은 index가 1 이상임을 뜻한다.(이전 `if` 문에서 걸리지 않았으므로)
+
+즉, 절대로 첫번째 **Node**가 아니므로 여기서 `head` 를 변경할 일은 없다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/44983ff6-7270-45d3-99a4-210520827ee6)
+
+index 1에 새로 만든 **Node**를 삽입한다고 가정해보자.
+
+이전과 똑같이 순서에 주의만 한다면 그리 어렵지 않을 것이다.
+
+새로 만들어진 `node` 는 `next` 필드가 `NULL` 이기에 소실될 데이터가 존재하지 않는다.
+
+먼저 `p_node->next` 를 `second` 로 바꿔주면 될 것이다.
+
+`node` 를 index 1에 삽입하면 기존에 index 1에 위치하던 `second` 는 index 2로 한 칸 밀려나게 될 것이기 때문이다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/cc3b486b-84a9-44a3-b273-35786d26651c)
+
+이후 `first->next` 를 `node` 로 변경하면 된다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/3817fe37-18ea-4b6c-b596-93503e2aef47)
+
+정상적으로 index 1에 `node` 가 삽입되어 `first` 는 index 0, `node` 는 index 1, `second` 는 index 2가 되었다.
+
+---
+
+## 7. `void remove_at(SinglyLinkedList*, int);`
+
+```c
+void remove_at(SinglyLinkedList* s, int index) {
+	// index는 0 ~ last index까지 유효
+	assert(index >= 0 && index < s->len);
+
+	// 제거하려는 Node를 저장할 변수
+	Node* p_target_node;
+
+	// 1️⃣
+	// 제거하려는 요소가 첫 번째 Node인 경우
+	if (index == 0) {
+		// 할당 해제를 위해 변수에 저장
+		p_target_node = s->head;
+
+		// head를 head 다음 Node로 변경
+		// 만약 다음 Node가 없다면 head는 NULL이 될 것
+		s->head = p_target_node->next;
+	} else {
+		// 2️⃣
+		// 제거하려는 요소의 직전 Node
+		Node* p_prev_node = get(s, index - 1);
+
+		// 할당 해제를 위해 변수에 저장
+		p_target_node = p_prev_node->next;
+
+		// 직전 Node를 제거 하려는 Node의 다음 Node로 변경
+		p_prev_node->next = p_target_node->next;
+	}
+
+	// 할당 해제 및 길이 감소
+	free(p_target_node);
+	s->len--;
+}
+```
+
+위 코드 역시 1️⃣ , 2️⃣ 로 표시한 부분을 시각화하여 자세히 설명하겠다.
+
+우선 1️⃣ 번 코드부터 보자
+
+```c
+// 1️⃣
+// 제거하려는 요소가 첫 번째 Node인 경우
+if (index == 0) {
+	// 할당 해제를 위해 변수에 저장
+	p_target_node = s->head;
+
+	// head를 head 다음 Node로 변경
+	// 만약 다음 Node가 없다면 head는 NULL이 될 것
+	s->head = p_target_node->next;
+}
+```
+
+제거할 **Node**가 index 0에 위치, 즉 첫번째 요소인 경우에만 실행되는 로직이다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/e422c0b4-c183-49a2-9918-3558d8e03caf)
+
+`insert` 와 마찬가지로 index가 0인 경우에만 `head` 가 변경되기 때문에 따로 처리해줘야 한다.
+
+제거할 **Node**는 `head` 이기 때문에 `p_target_node` 에 저장한다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/ff9d8b96-cd16-4958-b7ae-8c0f198f1fa2)
+
+그리고 `head` 에 `p_target_node->next` . 즉, `second` 의 주소를 할당한다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/be3c6371-8629-441e-a156-d56292f74d92)
+
+이후 첫 번째 **Node**였던 `first` 는 마지막에 `free(p_target_node)` 가 호출되며 할당 해제되어 해당 메모리 공간은 다른 변수에 의해 사용될 것이다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/0633fd56-023e-4055-bba6-bba1f3ddc8ee)
+
+```c
+} else {
+	// 2️⃣
+	// 제거하려는 요소의 직전 Node
+	Node* p_prev_node = get(s, index - 1);
+
+	// 할당 해제를 위해 변수에 저장
+	p_target_node = p_prev_node->next;
+
+	// 직전 Node를 제거 하려는 Node의 다음 Node로 변경
+	p_prev_node->next = p_target_node->next;
+}
+```
+
+`else` 블록에 속한 2️⃣ 번 코드들은 제거하려는 **Node**의 index가 1 이상일 때만 실행된다.
+
+index 1에 위치한 요소를 제거하는 상황을 생각해보자.
+
+index 0에 위치한 직전 **Node**가 `p_prev_node` 에, index 1에 위치한 실제로 제거할 **Node**는 `p_target_node` 에 저장될 것이다.
+
+`p_target_node` 는 이후 `free` 에 의해 할당 해제될 것이며,
+
+`second` 가 제거 되었으니, 아래와 같은 순서로 `first` 가 `third` 를 가리키게 될 것이다.
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/7a2f0692-f2e2-4dbd-a9e4-06ea3e212900)
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/c711ba25-095b-42e9-b31b-e16573f06a9e)
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/e9725c05-6dc8-457f-b2bb-14bf50049510)
+
+![image](https://github.com/mainfn/c-lang-guide-for-beginners/assets/121966058/ca2c2ab8-2c27-496a-a8e0-d6af14bfbd08)
+
+---
+
+## 8. `drop(SinglyLinkedList*)`
+
+```c
+void drop_node(Node* p_node) {
+	// p_node가 NULL이면 호출 종료
+	if (p_node == NULL) return;
+	// 다음 node도 drop_node 시도(NULL이면 재귀 호출 종료될 것)
+	drop_node(p_node->next);
+	// 현재 node 할당 해제
+	free(p_node);
+}
+
+void drop(SinglyLinkedList* s) {
+	drop_node(s->head);
+}
+```
+
+동적 할당 한 메모리를 사용한 뒤에는 반드시 해당 메모리 공간을 `free` 로 할당 해제해줘야 한다.
+
+**SinglyLinkedList**를 더 이상 사용하지 않는 경우, `drop` 을 호출하고, 그 안에서 `drop_node` 를 재귀적으로 호출하여 모든 **Node**를 할당 해제한다.
+
+---
+
+## 9. `print_all_nodes(SinglyLinkedList*)`
+
+```c
+void print_node(Node* node, int index) {
+		if (node == null) return;
+
+		printf("[%d]: %d\n", index, node->val);
+		print_node(node->next, index + 1);
+}
+
+void print_all_nodes(SinglyLinkedList* s) {
+	print_node(s->head);
+}
+```
+
+모든 **Node**를 재귀적으로 순회하며 출력하는 함수다.
+
+물론 재귀 호출이 아닌 반복문으로 구현하는 것도 가능하다.
+
+직접 해볼 것을 추천한다.
+
+---
+
+## 10. 전체 코드
+
+```c
+#include <stddef.h>
+#include <assert.h>
+#include <stdlib.h>
+#include <printf.h>
+
+typedef struct Node {
+	struct Node* next;
+	int val;
+} Node;
+
+typedef struct {
+	Node* head;
+	int len;
+} SinglyLinkedList;
+
+SinglyLinkedList new_singly_linked_list();
+Node* new_node(int);
+Node* get(SinglyLinkedList*, int);
+void push(SinglyLinkedList*, int);
+void insert(SinglyLinkedList*, int, int);
+void remove_at(SinglyLinkedList*, int);
+void drop_node(Node*);
+void print_node(Node*, int);
+void print_all_nodes(SinglyLinkedList*);
+
+SinglyLinkedList new_singly_linked_list() {
+		SinglyLinkedList s = {
+				.len = 0,
+				.head = NULL,
+		};
+
+		return s;
+}
+
+Node* new_node(int val)
+{
+	Node* p_node = malloc(sizeof(Node));
+
+	p_node->val = val;
+	p_node->next = NULL;
+
+	return p_node;
+}
+
+Node* get(SinglyLinkedList* s, int index) {
+	assert(index < s->len);
+
+	if (index < 0) return NULL;
+
+	Node* cursor = s->head;
+
+	for (int i = 0; i < index; i++) {
+		cursor = cursor->next;
+	}
+
+	return cursor;
+}
+
+void push(SinglyLinkedList* s, int val) {
+	Node* p_node = new_node(val);
+	Node* p_last_node = get(s, s->len - 1);
+
+	if (p_last_node == NULL)
+		s->head = p_node;
+	else
+		p_last_node->next = p_node;
+
+	s->len++;
+}
+
+void insert(SinglyLinkedList* s, int index, int val) {
+	assert(index >= 0 && index <= s->len);
+
+	Node* p_node = new_node(val);
+	Node* p_prev_node = get(s, index - 1);
+
+	if (p_prev_node == NULL) {
+		p_node->next = s->head;
+		s->head = p_node;
+	} else {
+		p_node->next = p_prev_node->next;
+		p_prev_node->next = p_node;
+	}
+
+	s->len++;
+
+}
+
+void remove_at(SinglyLinkedList* s, int index) {
+	assert(index >= 0 && index < s->len);
+
+	Node* p_target_node;
+
+	if (index == 0) {
+		p_target_node = s->head;
+
+		s->head = p_target_node->next;
+	} else {
+		Node* p_prev_node = get(s, index - 1);
+
+		p_target_node = p_prev_node->next;
+
+		p_prev_node->next = p_target_node->next;
+	}
+
+	free(p_target_node);
+	s->len--;
+}
+
+void drop_node(Node* p_node) {
+	if (p_node == NULL) return;
+
+	drop_node(p_node->next);
+	free(p_node);
+}
+
+void drop(SinglyLinkedList* s) {
+	drop_node(s->head);
+}
+
+void print_node(Node* node, int index) {
+	if (node == NULL) return;
+
+	printf("[%d]: %d\n", index, node->val);
+	print_node(node->next, index + 1);
+}
+
+void print_all_nodes(SinglyLinkedList* s) {
+	print_node(s->head, 0);
+}
+
+int main(){
+	SinglyLinkedList s = new_singly_linked_list();
+
+	insert(&s, 0, 1);
+	push(&s,2);
+	push(&s,3);
+	push(&s,4);
+	push(&s,5);
+	get(&s,0);
+	remove_at(&s,4);
+	print_all_nodes(&s);
+
+	return 0;
+}
+```
+
+전체 코드를 참고하며 자신만의 방식으로 구현해보자.
+
+디버깅을 돌려가며 결과가 올바른지 확인하는 것도 잊지 말자.
